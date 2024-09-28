@@ -33,7 +33,7 @@ public class EndianDemo {
 
 		int n = 123456789;
 		System.out.println("int n = 123456789 Binary: " + Integer.toBinaryString(n));
-		// 0000 0111         01011011  11001101  00010101
+		// 0000 0111              01011011  11001101  00010101
 		// 0x7 最高有效字节 MSB   | 0x5b    | 0xcd    | 0x15 最低有效字节 LSB
 		byte[] bytes = ByteBuffer.allocate(4).putInt(n).array();
 
@@ -43,7 +43,7 @@ public class EndianDemo {
 
 		byte[] bytes2 = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(n).array();
 		if (bytes2[0] == 0x15){
-			System.out.println("Put n into ByteBuffer, and set LITTLE_ENDIAN  to order,LSB in bytes2[0], Little Endian");
+			System.out.println("Put n into ByteBuffer, and set LITTLE_ENDIAN to order,LSB in bytes2[0], Little Endian");
 		}
 
 		System.out.println("let's read data from file.txt,which is 0123456789abcdefg");
@@ -63,25 +63,55 @@ public class EndianDemo {
 			MappedByteBuffer mapped = fc.map(FileChannel.MapMode.READ_ONLY, 0, fileSize);
 			String order = mapped.order().toString();
 			System.out.println("MappedByteBuffer default Order: " + order);
+			int position = mapped.position();
+			System.out.println("Position：" + position);
 			long data = mapped.getLong();
 			System.out.println("getLong: " + Long.toBinaryString(data));
 			System.out.println("00110000 | 00110001 | 00110010 | 00110011 | 00110100 | 00110101 | 00110110 | 00110111");
 			System.out.println("  0(MSB) |   1      |   2      |   3      |   4      |   5      |   6      |   7(LSB) ");
 
+			long posOfSevenBig = findSevenBigEndian(data,position);
+			System.out.println("posOfSeven Big Endian: " + posOfSevenBig);
+
 			mapped.flip();
 
 			mapped.order(ByteOrder.LITTLE_ENDIAN);
 			long data2 = mapped.getLong();
-			System.out.println("MappedByteBuffer Change Order: " + mapped.order().toString());
+			System.out.println("MappedByteBuffer Change Order to: " + mapped.order().toString());
 			System.out.println("getLong: " + Long.toBinaryString(data2));
 			System.out.println("00110111 | 00110110 | 00110101 | 00110100 | 00110011 | 00110010 | 00110001 | 00110000");
 			System.out.println(" 7(LSB)  |    6     |    5     |   4      |     3    |     2    |   1      |   0 (MSB) ");
 
+			long posOfSevenLittle = findSevenLittleEndian(data,position);
+			System.out.println("posOfSeven Little Endian: " + posOfSevenLittle);
 
 		}
 		catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	private static long findSevenBigEndian(long data, int position) {
+
+		// int 7 = ascii 55 = 0x37 , 0x37 * 0x101010101010101L = 0x3737373737373737L
+		long input = data ^ 0x3737373737373737L;
+		long pos = (input - 0x0101010101010101L) & ~input & 0x8080808080808080L;
+		System.out.println("pos:" + Long.toBinaryString(pos));
+		if (pos != 0){
+			position += (64 - Long.numberOfTrailingZeros(pos)) >>> 3;
+		}
+		return position;
+	}
+
+	private static long findSevenLittleEndian(long data, long position) {
+
+		long input = data ^ 0x3737373737373737L;
+		long pos = (input - 0x0101010101010101L) & ~input & 0x8080808080808080L;
+		System.out.println("pos:" + Long.toBinaryString(pos));
+		if (pos != 0){
+			position += Long.numberOfTrailingZeros(pos) >>> 3;
+		}
+		return position;
 	}
 
 	private static void usingUnsafe() {
@@ -93,7 +123,6 @@ public class EndianDemo {
 			MemorySegment memSegment = fc.map(FileChannel.MapMode.READ_ONLY, 0, fileSize, Arena.global());
 			long start = memSegment.address();
 			long data = MemReader.UNSAFE.getLong(start);
-			System.out.println("Order:" + memSegment.asByteBuffer().order().toString());
 			System.out.println("Unsafe.getLong: " + Long.toBinaryString(data));
 			System.out.println("00110111 | 00110110 | 00110101 | 00110100 | 00110011 | 00110010 | 00110001 | 00110000");
 			System.out.println(" 7(LSB)  |    6     |    5     |   4      |     3    |     2    |   1      |   0 (MSB) ");
