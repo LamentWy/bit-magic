@@ -27,7 +27,6 @@ public class DetermineByteInWord {
 	 * */
 	public static boolean hasZero_v2(int n) {
 		n = (n - 0x01010101) & ~n & 0x80808080;
-		System.out.println("n = " + Integer.toBinaryString(n));
 		return n != 0;
 	}
 
@@ -55,11 +54,8 @@ public class DetermineByteInWord {
 	 * hasZero(n) / hasZero_v2(n) 都可以用在这里。
 	 * */
 	public static boolean hasX(int n, byte x) {
-
-		n = n ^ ((int) x * 0x01010101);
-
+		n = n ^ ( x * 0x01010101);
 		return hasZero_v2(n);
-
 	}
 
 	// 其他比大小和区间的跳过
